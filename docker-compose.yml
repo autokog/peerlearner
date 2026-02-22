@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: grouper
+      POSTGRES_USER: grouper
+      POSTGRES_PASSWORD: grouper
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U grouper"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: .
+    environment:
+      DATABASE_URL: postgresql://grouper:grouper@db:5432/grouper
+      SECRET_KEY: change-me-in-production
+      FLASK_APP: manage.py
+      MAX_GROUPS: "5"
+      MAX_MEMBERS: "3"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./ui
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
