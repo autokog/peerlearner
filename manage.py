@@ -43,6 +43,62 @@ def db_drop():
     click.secho("All tables dropped.", fg="yellow")
 
 
+@app.cli.command("link-units")
+@click.argument("course_id")
+@click.argument("unit_ids", nargs=-1, required=True)
+def link_units(course_id: str, unit_ids: tuple) -> None:
+    """Link units to a course by ID. Use 'flask list-courses' and 'flask list-units' to find IDs."""
+    import uuid as _uuid
+    try:
+        course = Course.query.get(_uuid.UUID(course_id))
+    except ValueError:
+        click.secho(f"Invalid course ID: {course_id}", fg="red")
+        return
+    if not course:
+        click.secho(f"No course found with ID: {course_id}", fg="red")
+        return
+
+    click.secho(f"Course: {course.name}", fg="cyan")
+
+    linked, skipped, not_found = [], [], []
+    for uid in unit_ids:
+        try:
+            unit = Unit.query.get(_uuid.UUID(uid))
+        except ValueError:
+            not_found.append(uid)
+            continue
+        if not unit:
+            not_found.append(uid)
+        elif unit in course.units:
+            skipped.append(unit.code)
+        else:
+            course.units.append(unit)
+            linked.append(unit.code)
+
+    if linked:
+        db.session.commit()
+        for code in linked:
+            click.secho(f"  + {code}", fg="green")
+    for code in skipped:
+        click.secho(f"  ~ {code} (already linked)", fg="yellow")
+    for uid in not_found:
+        click.secho(f"  ! {uid} (not found)", fg="red")
+
+
+@app.cli.command("list-courses")
+def list_courses() -> None:
+    """List all courses with their IDs."""
+    for c in Course.query.order_by(Course.name).all():
+        click.echo(f"{c.id}  {c.name}")
+
+
+@app.cli.command("list-units")
+def list_units() -> None:
+    """List all units with their IDs."""
+    for u in Unit.query.order_by(Unit.code).all():
+        click.echo(f"{u.id}  {u.code}  {u.name}")
+
+
 @app.cli.command("make-admin")
 @click.argument("email")
 def make_admin(email: str) -> None:
@@ -126,8 +182,7 @@ def fake(count: int, reset: bool) -> None:
         click.echo("Cleared existing students and groups.")
 
     # Find the next available serial number
-    last = Student.query.order_by(Student.id.desc()).first()
-    start_serial = 34000 + (last.id if last else 0) + 1
+    start_serial = 34000 + Student.query.count() + 1
 
     created = 0
     skipped = 0

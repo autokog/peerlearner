@@ -19,12 +19,12 @@ import {
 } from "@/components/ui/card";
 
 interface Course {
-  id: number;
+  id: string;
   name: string;
 }
 
 interface Unit {
-  id: number;
+  id: string;
   code: string;
   name: string;
 }
@@ -41,7 +41,7 @@ export default function Register({ onSuccess }: RegisterProps) {
     phone: "",
     course_id: "",
   });
-  const [selectedUnits, setSelectedUnits] = useState<number[]>([]);
+  const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const [unitsLoading, setUnitsLoading] = useState(false);
@@ -73,7 +73,7 @@ export default function Register({ onSuccess }: RegisterProps) {
     setForm({ ...form, [e.target.name]: e.target.value });
   }
 
-  function toggleUnit(id: number) {
+  function toggleUnit(id: string) {
     setSelectedUnits((prev) =>
       prev.includes(id) ? prev.filter((u) => u !== id) : [...prev, id]
     );
@@ -93,7 +93,6 @@ export default function Register({ onSuccess }: RegisterProps) {
         body: JSON.stringify({
           ...form,
           email,
-          course_id: Number(form.course_id),
           unit_ids: selectedUnits,
         }),
       });

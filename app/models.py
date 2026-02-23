@@ -1,14 +1,40 @@
+import uuid
 import hashlib
 import json
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy import String, TypeDecorator
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from . import db
+
+
+class GUID(TypeDecorator):
+    """UUID type: native uuid on PostgreSQL, string on other backends (e.g. SQLite)."""
+    impl = String(36)
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == "postgresql":
+            return dialect.type_descriptor(PG_UUID(as_uuid=True))
+        return dialect.type_descriptor(String(36))
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        if isinstance(value, uuid.UUID):
+            return value if dialect.name == "postgresql" else str(value)
+        return uuid.UUID(str(value)) if dialect.name == "postgresql" else str(uuid.UUID(str(value)))
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        return value if isinstance(value, uuid.UUID) else uuid.UUID(str(value))
 
 
 class User(db.Model):
     __tablename__ = "users"
 
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(GUID, primary_key=True, default=uuid.uuid4)
     email = db.Column(db.String(120), nullable=False, unique=True)
     password_hash = db.Column(db.String(256), nullable=False)
     role = db.Column(db.String(20), nullable=False, default="user")
@@ -19,7 +45,7 @@ class User(db.Model):
 
     # Nullable until the user completes their student profile
     student_id = db.Column(
-        db.Integer, db.ForeignKey("students.id"), nullable=True, unique=True
+        GUID, db.ForeignKey("students.id"), nullable=True, unique=True
     )
     student = db.relationship(
         "Student",
@@ -37,7 +63,7 @@ class User(db.Model):
     def to_dict(self):
         email_hash = hashlib.md5(self.email.lower().strip().encode()).hexdigest()
         return {
-            "id": self.id,
+            "id": str(self.id),
             "email": self.email,
             "role": self.role,
             "is_admin": self.is_admin,
@@ -103,44 +129,44 @@ UNITS = [
 # Association tables — no model classes needed
 student_units = db.Table(
     "student_units",
-    db.Column("student_id", db.Integer, db.ForeignKey("students.id"), primary_key=True),
-    db.Column("unit_id", db.Integer, db.ForeignKey("units.id"), primary_key=True),
+    db.Column("student_id", GUID, db.ForeignKey("students.id"), primary_key=True),
+    db.Column("unit_id", GUID, db.ForeignKey("units.id"), primary_key=True),
 )
 
 course_units = db.Table(
     "course_units",
-    db.Column("course_id", db.Integer, db.ForeignKey("courses.id"), primary_key=True),
-    db.Column("unit_id", db.Integer, db.ForeignKey("units.id"), primary_key=True),
+    db.Column("course_id", GUID, db.ForeignKey("courses.id"), primary_key=True),
+    db.Column("unit_id", GUID, db.ForeignKey("units.id"), primary_key=True),
 )
 
 
 class Unit(db.Model):
     __tablename__ = "units"
 
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(GUID, primary_key=True, default=uuid.uuid4)
     code = db.Column(db.String(20), nullable=False, unique=True)
     name = db.Column(db.String(200), nullable=False)
 
     def to_dict(self):
-        return {"id": self.id, "code": self.code, "name": self.name}
+        return {"id": str(self.id), "code": self.code, "name": self.name}
 
 
 class Course(db.Model):
     __tablename__ = "courses"
 
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(GUID, primary_key=True, default=uuid.uuid4)
     name = db.Column(db.String(200), nullable=False, unique=True)
     students = db.relationship("Student", backref="course", lazy=True)
     units = db.relationship("Unit", secondary=course_units, lazy=True)
 
     def to_dict(self):
-        return {"id": self.id, "name": self.name}
+        return {"id": str(self.id), "name": self.name}
 
 
 class Group(db.Model):
     __tablename__ = "groups"
 
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(GUID, primary_key=True, default=uuid.uuid4)
     name = db.Column(db.String(50), nullable=False, unique=True)
     whatsapp_link = db.Column(db.String(500), nullable=True)
     students = db.relationship("Student", backref="group", lazy=True)
@@ -150,7 +176,7 @@ class Group(db.Model):
 
     def to_dict(self):
         return {
-            "id": self.id,
+            "id": str(self.id),
             "name": self.name,
             "whatsapp_link": self.whatsapp_link,
             "members": [s.to_dict() for s in self.students],
@@ -160,27 +186,27 @@ class Group(db.Model):
 class Student(db.Model):
     __tablename__ = "students"
 
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(GUID, primary_key=True, default=uuid.uuid4)
     name = db.Column(db.String(100), nullable=False)
     student_id = db.Column(db.String(50), nullable=False, unique=True)
     gender = db.Column(db.String(20), nullable=False)
     email = db.Column(db.String(100), nullable=False)
     phone = db.Column(db.String(30), nullable=False)
-    group_id = db.Column(db.Integer, db.ForeignKey("groups.id"), nullable=True)
-    course_id = db.Column(db.Integer, db.ForeignKey("courses.id"), nullable=True)
+    group_id = db.Column(GUID, db.ForeignKey("groups.id"), nullable=True)
+    course_id = db.Column(GUID, db.ForeignKey("courses.id"), nullable=True)
     units = db.relationship("Unit", secondary=student_units, lazy=True)
 
     def to_dict(self):
         email_hash = hashlib.md5(self.email.lower().strip().encode()).hexdigest()
         return {
-            "id": self.id,
+            "id": str(self.id),
             "name": self.name,
             "student_id": self.student_id,
             "gender": self.gender,
             "email": self.email,
             "phone": self.phone,
-            "group_id": self.group_id,
-            "course_id": self.course_id,
+            "group_id": str(self.group_id) if self.group_id else None,
+            "course_id": str(self.course_id) if self.course_id else None,
             "course": self.course.name if self.course else None,
             "units": [u.to_dict() for u in self.units],
             "has_account": self.user is not None,
@@ -191,11 +217,11 @@ class Student(db.Model):
 class AuditLog(db.Model):
     __tablename__ = "audit_logs"
 
-    id          = db.Column(db.Integer, primary_key=True)
-    user_id     = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    id          = db.Column(GUID, primary_key=True, default=uuid.uuid4)
+    user_id     = db.Column(GUID, db.ForeignKey("users.id"), nullable=True)
     action      = db.Column(db.String(50), nullable=False)
     entity_type = db.Column(db.String(50), nullable=True)
-    entity_id   = db.Column(db.Integer, nullable=True)
+    entity_id   = db.Column(GUID, nullable=True)
     detail      = db.Column(db.Text, nullable=True)   # business context (JSON)
     ip_address  = db.Column(db.String(45), nullable=True)
     user_agent  = db.Column(db.Text, nullable=True)
@@ -207,12 +233,12 @@ class AuditLog(db.Model):
 
     def to_dict(self):
         return {
-            "id": self.id,
-            "user_id": self.user_id,
+            "id": str(self.id),
+            "user_id": str(self.user_id) if self.user_id else None,
             "user_email": self.user.email if self.user else None,
             "action": self.action,
             "entity_type": self.entity_type,
-            "entity_id": self.entity_id,
+            "entity_id": str(self.entity_id) if self.entity_id else None,
             "detail": json.loads(self.detail) if self.detail else None,
             "ip_address": self.ip_address,
             "user_agent": self.user_agent,

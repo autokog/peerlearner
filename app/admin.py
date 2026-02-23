@@ -1,3 +1,4 @@
+import uuid
 from flask import Blueprint, request, jsonify, session
 from . import db
 from .models import AuditLog, Group, Student
@@ -33,7 +34,7 @@ def get_audit_log():
     })
 
 
-@admin.route("/groups/<int:group_id>", methods=["PATCH"])
+@admin.route("/groups/<uuid:group_id>", methods=["PATCH"])
 @admin_required
 def update_group(group_id):
     group = Group.query.get(group_id)
@@ -59,7 +60,7 @@ def update_group(group_id):
     return jsonify(group.to_dict())
 
 
-@admin.route("/students/<int:student_id>/move", methods=["POST"])
+@admin.route("/students/<uuid:student_id>/move", methods=["POST"])
 @admin_required
 def move_student(student_id):
     student = Student.query.get(student_id)
@@ -70,6 +71,11 @@ def move_student(student_id):
     group_id = data.get("group_id")
     if not group_id:
         return jsonify({"error": "group_id is required."}), 400
+
+    try:
+        group_id = uuid.UUID(str(group_id))
+    except (ValueError, AttributeError):
+        return jsonify({"error": "Invalid group_id."}), 400
 
     group = Group.query.get(group_id)
     if not group:

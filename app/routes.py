@@ -1,10 +1,23 @@
+import uuid
 from flask import Blueprint, current_app, request, jsonify, session
 from . import db
 from .models import Course, Group, Student, Unit, User
 from .grouping import assign_group
-from .auth import login_required, _audit
+from .auth import login_required, _audit, _session_user_id
 
 api = Blueprint("api", __name__, url_prefix="/api")
+
+
+def _to_uuid(value):
+    """Convert a string or UUID to a UUID object, returning None on failure."""
+    if value is None:
+        return None
+    if isinstance(value, uuid.UUID):
+        return value
+    try:
+        return uuid.UUID(str(value))
+    except (ValueError, AttributeError):
+        return None
 
 
 @api.route("/config", methods=["GET"])
@@ -25,7 +38,7 @@ def get_courses():
 @api.route("/units", methods=["GET"])
 @login_required
 def get_units():
-    course_id = request.args.get("course_id", type=int)
+    course_id = _to_uuid(request.args.get("course_id"))
     if course_id:
         course = Course.query.get(course_id)
         if not course:
@@ -49,12 +62,14 @@ def register():
     if not data["email"].lower().endswith("@students.ouk.ac.ke"):
         return jsonify({"error": "Email must end in @students.ouk.ac.ke."}), 400
 
-    if not Course.query.get(data["course_id"]):
+    course_id = _to_uuid(data["course_id"])
+    if not course_id or not Course.query.get(course_id):
         return jsonify({"error": "Invalid course selected."}), 400
 
-    unit_ids = data.get("unit_ids", [])
+    unit_ids = [_to_uuid(uid) for uid in data.get("unit_ids", [])]
+    unit_ids = [uid for uid in unit_ids if uid]
     units = Unit.query.filter(Unit.id.in_(unit_ids)).all() if unit_ids else []
-    if unit_ids and len(units) != len(unit_ids):
+    if data.get("unit_ids") and len(units) != len(data["unit_ids"]):
         return jsonify({"error": "One or more selected units are invalid."}), 400
 
     if Student.query.filter_by(student_id=data["student_id"]).first():
@@ -66,14 +81,14 @@ def register():
         gender=data["gender"],
         email=data["email"],
         phone=data["phone"],
-        course_id=data["course_id"],
+        course_id=course_id,
         units=units,
     )
     db.session.add(student)
     db.session.flush()  # get student.id before commit
 
     # Always link to the currently logged-in user if they aren't linked yet
-    current_user = User.query.get(session["user_id"])
+    current_user = User.query.get(_session_user_id())
     if current_user.student_id is None:
         current_user.student_id = student.id
     # Also link any other account that shares the student email (e.g. a
@@ -115,7 +130,7 @@ def public_get_student(student_id):
     return jsonify({
         "student": student.to_dict(),
         "group": {
-            "id": group.id,
+            "id": str(group.id),
             "name": group.name,
             "whatsapp_link": group.whatsapp_link,
             "members": members,

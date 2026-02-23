@@ -1,3 +1,4 @@
+import uuid
 import json
 from functools import wraps
 from flask import Blueprint, request, jsonify, session
@@ -12,6 +13,12 @@ OUK_DOMAIN = "ouk.ac.ke"
 def _valid_ouk_email(email: str) -> bool:
     return email.lower().endswith(f"@{OUK_DOMAIN}") or \
            email.lower().endswith(f".{OUK_DOMAIN}")
+
+
+def _session_user_id():
+    """Return the session user_id as a UUID object, or None."""
+    raw = session.get("user_id")
+    return uuid.UUID(raw) if raw else None
 
 
 def _try_link(user: User) -> None:
@@ -36,7 +43,7 @@ def login_required(f):
 def admin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        user_id = session.get("user_id")
+        user_id = _session_user_id()
         if not user_id:
             return jsonify({"error": "Authentication required."}), 401
         user = User.query.get(user_id)
@@ -54,10 +61,10 @@ def _get_ip() -> str:
     return request.remote_addr
 
 
-def _audit(action: str, entity_type: str = None, entity_id: int = None, detail: dict = None) -> None:
+def _audit(action: str, entity_type: str = None, entity_id=None, detail: dict = None) -> None:
     """Write an audit log entry capturing full request metadata."""
     entry = AuditLog(
-        user_id=session.get("user_id"),
+        user_id=_session_user_id(),
         action=action,
         entity_type=entity_type,
         entity_id=entity_id,
@@ -98,7 +105,7 @@ def register():
     _try_link(user)
 
     session.permanent = True
-    session["user_id"] = user.id
+    session["user_id"] = str(user.id)
 
     _audit("user.register", "user", user.id, {"email": user.email})
 
@@ -122,7 +129,7 @@ def login():
     _try_link(user)
 
     session.permanent = True
-    session["user_id"] = user.id
+    session["user_id"] = str(user.id)
 
     _audit("user.login", "user", user.id, {"email": user.email})
 
@@ -131,7 +138,7 @@ def login():
 
 @auth.route("/logout", methods=["POST"])
 def logout():
-    user_id = session.get("user_id")
+    user_id = _session_user_id()
     if user_id:
         _audit("user.logout", "user", user_id)
     session.pop("user_id", None)
@@ -140,7 +147,7 @@ def logout():
 
 @auth.route("/me", methods=["GET"])
 def me():
-    user_id = session.get("user_id")
+    user_id = _session_user_id()
     if not user_id:
         return jsonify({"error": "Not authenticated."}), 401
     user = User.query.get(user_id)

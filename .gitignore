@@ -4,3 +4,9 @@ __pycache__/
 
 
 instance
+
+.agents/
+.claude/
+.env
+
+skills-lock.json
