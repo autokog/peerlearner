@@ -1,7 +1,9 @@
 flask
 flask-sqlalchemy
+flask-migrate
 flask-cors
 psycopg2-binary
 gunicorn
-pytest                                                                                  │
-pytest-flask 
+pytest
+pytest-flask
+

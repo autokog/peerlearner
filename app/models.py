@@ -1,4 +1,6 @@
 import hashlib
+import json
+from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from . import db
 
@@ -9,6 +11,11 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), nullable=False, unique=True)
     password_hash = db.Column(db.String(256), nullable=False)
+    role = db.Column(db.String(20), nullable=False, default="user")
+
+    @property
+    def is_admin(self) -> bool:
+        return self.role == "admin"
 
     # Nullable until the user completes their student profile
     student_id = db.Column(
@@ -32,6 +39,8 @@ class User(db.Model):
         return {
             "id": self.id,
             "email": self.email,
+            "role": self.role,
+            "is_admin": self.is_admin,
             "student": self.student.to_dict() if self.student else None,
             "gravatar_url": f"https://www.gravatar.com/avatar/{email_hash}?s=80&d=identicon",
         }
@@ -172,4 +181,39 @@ class Student(db.Model):
             "course": self.course.name if self.course else None,
             "units": [u.to_dict() for u in self.units],
             "has_account": self.user is not None,
+        }
+
+
+class AuditLog(db.Model):
+    __tablename__ = "audit_logs"
+
+    id          = db.Column(db.Integer, primary_key=True)
+    user_id     = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    action      = db.Column(db.String(50), nullable=False)
+    entity_type = db.Column(db.String(50), nullable=True)
+    entity_id   = db.Column(db.Integer, nullable=True)
+    detail      = db.Column(db.Text, nullable=True)   # business context (JSON)
+    ip_address  = db.Column(db.String(45), nullable=True)
+    user_agent  = db.Column(db.Text, nullable=True)
+    method      = db.Column(db.String(10), nullable=True)
+    path        = db.Column(db.String(255), nullable=True)
+    referrer    = db.Column(db.Text, nullable=True)
+    created_at  = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    user        = db.relationship("User", foreign_keys=[user_id])
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "user_email": self.user.email if self.user else None,
+            "action": self.action,
+            "entity_type": self.entity_type,
+            "entity_id": self.entity_id,
+            "detail": json.loads(self.detail) if self.detail else None,
+            "ip_address": self.ip_address,
+            "user_agent": self.user_agent,
+            "method": self.method,
+            "path": self.path,
+            "referrer": self.referrer,
+            "created_at": self.created_at.isoformat(),
         }

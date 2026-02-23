@@ -1,7 +1,7 @@
 import random
 import click
 from app import create_app, db, seed_db
-from app.models import Course, Student, Group, Unit
+from app.models import Course, Student, Group, Unit, User
 from app.grouping import assign_group
 
 app = create_app()
@@ -41,6 +41,19 @@ def db_drop():
     """Drop every table (destructive — data is lost)."""
     _drop_all_cascade()
     click.secho("All tables dropped.", fg="yellow")
+
+
+@app.cli.command("make-admin")
+@click.argument("email")
+def make_admin(email: str) -> None:
+    """Grant admin privileges to the user with the given EMAIL."""
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        click.secho(f"No user found with email: {email}", fg="red")
+        return
+    user.role = "admin"
+    db.session.commit()
+    click.secho(f"✓ {email} is now an admin.", fg="green")
 
 # ---------------------------------------------------------------------------
 # Fake data pools
@@ -160,4 +173,4 @@ def fake(count: int, reset: bool) -> None:
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.cli.main()

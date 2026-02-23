@@ -33,13 +33,21 @@ def assign_group(student: Student) -> Group:
     groups = Group.query.all()
     available = [g for g in groups if g.member_count() < max_members]
 
-    if available:
-        # Pick the group with the best (unit overlap, gender balance) score.
-        group = max(available, key=lambda g: _score(g, student))
+    # Only consider joining an existing group if there is at least one unit in common.
+    with_overlap = [g for g in available if _score(g, student)[0] > 0]
+
+    if with_overlap:
+        # Best existing group that shares at least one unit.
+        group = max(with_overlap, key=lambda g: _score(g, student))
     elif len(groups) < max_groups:
+        # No overlap anywhere — start a fresh group.
         group = Group(name=f"Group {len(groups) + 1}")
         db.session.add(group)
         db.session.flush()
+    elif available:
+        # All groups are at max_groups but none have overlap — fall back to
+        # best available by gender balance so no one is left without a group.
+        group = max(available, key=lambda g: _score(g, student))
     else:
         raise ValueError("Registration is closed — all groups are full.")
 

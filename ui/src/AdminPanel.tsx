@@ -1,0 +1,165 @@
+import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import MoveStudentDialog from "./MoveStudentDialog";
+
+export function AdminGroups() {
+  const [groups, setGroups] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [moving, setMoving] = useState<{ student: any } | null>(null);
+
+  async function loadGroups() {
+    const res = await fetch("/api/admin/groups");
+    if (res.ok) {
+      const data = await res.json();
+      setGroups(data);
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => { loadGroups(); }, []);
+
+  function handleMoved(_student: any, _group: any) {
+    setMoving(null);
+    loadGroups();
+  }
+
+  if (loading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+
+  return (
+    <div className="space-y-4">
+      {groups.length === 0 && (
+        <p className="text-sm text-muted-foreground">No groups yet.</p>
+      )}
+      {groups.map((g) => (
+        <Card key={g.id}>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-semibold">{g.name}</CardTitle>
+              <Badge variant="secondary">{g.members.length} members</Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {g.members.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No members.</p>
+            ) : (
+              <ul className="divide-y">
+                {g.members.map((s: any) => (
+                  <li key={s.id} className="flex items-center justify-between py-1.5">
+                    <div>
+                      <p className="text-sm font-medium">{s.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {s.student_id} · {s.gender} · {s.course ?? "—"}
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setMoving({ student: s })}
+                    >
+                      Move
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      ))}
+
+      {moving && (
+        <MoveStudentDialog
+          student={moving.student}
+          groups={groups}
+          onClose={() => setMoving(null)}
+          onMoved={handleMoved}
+        />
+      )}
+    </div>
+  );
+}
+
+export function AuditLogView() {
+  const [entries, setEntries] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/admin/audit-log?page=${page}&per_page=50`)
+      .then((r) => r.json())
+      .then((data) => {
+        setEntries(data.entries ?? []);
+        setTotalPages(data.pages ?? 1);
+      })
+      .finally(() => setLoading(false));
+  }, [page]);
+
+  if (loading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+
+  return (
+    <div className="space-y-3">
+      {entries.length === 0 && (
+        <p className="text-sm text-muted-foreground">No audit log entries yet.</p>
+      )}
+      {entries.length > 0 && (
+        <div className="overflow-x-auto rounded-md border">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50">
+              <tr>
+                <th className="px-3 py-2 text-left font-medium text-muted-foreground">Time</th>
+                <th className="px-3 py-2 text-left font-medium text-muted-foreground">User</th>
+                <th className="px-3 py-2 text-left font-medium text-muted-foreground">Action</th>
+                <th className="px-3 py-2 text-left font-medium text-muted-foreground">IP</th>
+                <th className="px-3 py-2 text-left font-medium text-muted-foreground">Method</th>
+                <th className="px-3 py-2 text-left font-medium text-muted-foreground">Path</th>
+                <th className="px-3 py-2 text-left font-medium text-muted-foreground">User Agent</th>
+                <th className="px-3 py-2 text-left font-medium text-muted-foreground">Referrer</th>
+                <th className="px-3 py-2 text-left font-medium text-muted-foreground">Detail</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {entries.map((e) => (
+                <tr key={e.id} className="hover:bg-muted/30">
+                  <td className="px-3 py-2 whitespace-nowrap text-xs text-muted-foreground">
+                    {new Date(e.created_at).toLocaleString()}
+                  </td>
+                  <td className="px-3 py-2 text-xs">{e.user_email ?? "—"}</td>
+                  <td className="px-3 py-2">
+                    <Badge variant="outline" className="text-xs font-mono">{e.action}</Badge>
+                  </td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">{e.ip_address ?? "—"}</td>
+                  <td className="px-3 py-2 text-xs font-mono">{e.method ?? "—"}</td>
+                  <td className="px-3 py-2 text-xs font-mono text-muted-foreground whitespace-nowrap">{e.path ?? "—"}</td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground max-w-[200px]">
+                    <span title={e.user_agent ?? ""} className="block truncate">{e.user_agent ?? "—"}</span>
+                  </td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground max-w-[150px]">
+                    <span title={e.referrer ?? ""} className="block truncate">{e.referrer ?? "—"}</span>
+                  </td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground">
+                    {e.detail ? JSON.stringify(e.detail) : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div className="flex items-center gap-2 justify-end">
+          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+            Previous
+          </Button>
+          <span className="text-xs text-muted-foreground">Page {page} of {totalPages}</span>
+          <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+            Next
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}

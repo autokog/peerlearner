@@ -1,7 +1,8 @@
+import json
 from functools import wraps
 from flask import Blueprint, request, jsonify, session
 from . import db
-from .models import Student, User
+from .models import AuditLog, Student, User
 
 auth = Blueprint("auth", __name__, url_prefix="/api/auth")
 
@@ -32,6 +33,45 @@ def login_required(f):
     return decorated
 
 
+def admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        user_id = session.get("user_id")
+        if not user_id:
+            return jsonify({"error": "Authentication required."}), 401
+        user = User.query.get(user_id)
+        if not user or not user.is_admin:
+            return jsonify({"error": "Admin access required."}), 403
+        return f(*args, **kwargs)
+    return decorated
+
+
+def _get_ip() -> str:
+    """Return the real client IP, honouring X-Forwarded-For from trusted proxies."""
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    return request.remote_addr
+
+
+def _audit(action: str, entity_type: str = None, entity_id: int = None, detail: dict = None) -> None:
+    """Write an audit log entry capturing full request metadata."""
+    entry = AuditLog(
+        user_id=session.get("user_id"),
+        action=action,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        detail=json.dumps(detail) if detail is not None else None,
+        ip_address=_get_ip(),
+        user_agent=request.user_agent.string or None,
+        method=request.method,
+        path=request.path,
+        referrer=request.referrer or None,
+    )
+    db.session.add(entry)
+    db.session.commit()
+
+
 @auth.route("/register", methods=["POST"])
 def register():
     data = request.get_json(force=True)
@@ -60,6 +100,8 @@ def register():
     session.permanent = True
     session["user_id"] = user.id
 
+    _audit("user.register", "user", user.id, {"email": user.email})
+
     return jsonify({"user": user.to_dict()}), 201
 
 
@@ -82,11 +124,16 @@ def login():
     session.permanent = True
     session["user_id"] = user.id
 
+    _audit("user.login", "user", user.id, {"email": user.email})
+
     return jsonify({"user": user.to_dict()})
 
 
 @auth.route("/logout", methods=["POST"])
 def logout():
+    user_id = session.get("user_id")
+    if user_id:
+        _audit("user.logout", "user", user_id)
     session.pop("user_id", None)
     return jsonify({"message": "Logged out."})
 

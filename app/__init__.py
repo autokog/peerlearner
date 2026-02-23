@@ -1,8 +1,10 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 from flask_cors import CORS
 
 db = SQLAlchemy()
+migrate = Migrate()
 
 
 def create_app(test_config=None):
@@ -13,12 +15,15 @@ def create_app(test_config=None):
         app.config.update(test_config)
 
     db.init_app(app)
+    migrate.init_app(app, db)
     CORS(app)
 
     from .routes import api
     from .auth import auth
+    from .admin import admin
     app.register_blueprint(api)
     app.register_blueprint(auth)
+    app.register_blueprint(admin)
 
     return app
 

@@ -2,7 +2,7 @@ from flask import Blueprint, current_app, request, jsonify, session
 from . import db
 from .models import Course, Group, Student, Unit, User
 from .grouping import assign_group
-from .auth import login_required
+from .auth import login_required, _audit
 
 api = Blueprint("api", __name__, url_prefix="/api")
 
@@ -89,6 +89,8 @@ def register():
     except ValueError as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 403
+
+    _audit("student.enroll", "student", student.id, {"student_name": student.name})
 
     return jsonify({
         "student": student.to_dict(),

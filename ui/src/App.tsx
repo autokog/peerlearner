@@ -5,9 +5,10 @@ import MyGroup from "./MyGroup";
 import GroupSidebar from "./GroupSidebar";
 import Login from "./Login";
 import AuthRegister from "./AuthRegister";
+import { AdminGroups, AuditLogView } from "./AdminPanel";
 import { Button } from "@/components/ui/button"
 
-type View = "register" | "success" | "my-group";
+type View = "register" | "success" | "my-group" | "admin-groups" | "audit-log";
 type AuthView = "login" | "signup";
 
 export default function App() {
@@ -31,7 +32,6 @@ export default function App() {
       .then((data) => {
         if (data?.user) {
           setUser(data.user);
-          // If they have a linked student, land on My Group by default
           if (data.user.student) setView("my-group");
         }
       })
@@ -74,41 +74,43 @@ export default function App() {
   }
 
   const hasLinkedStudent = Boolean(user.student);
+  const isAdmin = Boolean(user.is_admin);
 
-  // Never show the enroll form to an already-enrolled student
   const activeView = hasLinkedStudent && view === "register" ? "my-group" : view;
+
+  function NavButton({ forView, label }: { forView: View; label: string }) {
+    return (
+      <Button
+        variant={view === forView ? "default" : "ghost"}
+        size="sm"
+        onClick={() => setView(forView)}
+      >
+        {label}
+      </Button>
+    );
+  }
+
+  const navLinks = (
+    <>
+      {hasLinkedStudent && <NavButton forView="my-group" label="My Group" />}
+      {!hasLinkedStudent && <NavButton forView="register" label="Enroll" />}
+      {isAdmin && <NavButton forView="admin-groups" label="Groups" />}
+      {isAdmin && <NavButton forView="audit-log" label="Audit Log" />}
+    </>
+  );
 
   return (
     <div className="min-h-screen bg-muted/40">
       <header className="border-b bg-background">
-        <div className="mx-auto max-w-4xl px-6 py-3">
+        <div className="mx-auto max-w-5xl px-6 py-3">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-xl font-bold tracking-tight">Student Grouper</h1>
               <p className="text-xs text-muted-foreground">Auto-assign students to groups</p>
             </div>
-            {/* Desktop: nav + user controls in one row */}
+            {/* Desktop */}
             <div className="hidden sm:flex items-center gap-3">
-              <nav className="flex gap-2">
-                {hasLinkedStudent && (
-                  <Button
-                    variant={view === "my-group" ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setView("my-group")}
-                  >
-                    My Group
-                  </Button>
-                )}
-                {!hasLinkedStudent && (
-                  <Button
-                    variant={view === "register" ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setView("register")}
-                  >
-                    Enroll
-                  </Button>
-                )}
-              </nav>
+              <nav className="flex gap-2">{navLinks}</nav>
               <div className="h-4 w-px bg-border" />
               <img
                 src={user.gravatar_url}
@@ -116,12 +118,14 @@ export default function App() {
                 title={user.email}
                 className="w-8 h-8 rounded-full border border-border"
               />
-              <span className="text-sm text-muted-foreground">{user.email}</span>
+              <span className="text-sm text-muted-foreground">
+                {user.email}{isAdmin && <span className="ml-1 text-xs font-medium text-primary">(admin)</span>}
+              </span>
               <Button variant="outline" size="sm" onClick={handleLogout}>
                 Sign Out
               </Button>
             </div>
-            {/* Mobile: just avatar + sign out */}
+            {/* Mobile: avatar + sign out */}
             <div className="flex sm:hidden items-center gap-2">
               <img
                 src={user.gravatar_url}
@@ -135,30 +139,11 @@ export default function App() {
             </div>
           </div>
           {/* Mobile: nav below */}
-          <nav className="flex gap-2 mt-2 sm:hidden">
-            {hasLinkedStudent && (
-              <Button
-                variant={view === "my-group" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setView("my-group")}
-              >
-                My Group
-              </Button>
-            )}
-            {!hasLinkedStudent && (
-              <Button
-                variant={view === "register" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setView("register")}
-              >
-                Enroll
-              </Button>
-            )}
-          </nav>
+          <nav className="flex gap-2 mt-2 sm:hidden">{navLinks}</nav>
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-6 py-10">
+      <main className="mx-auto max-w-5xl px-6 py-10">
         {activeView === "my-group" && <MyGroup user={user} />}
         {activeView === "register" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
@@ -169,6 +154,8 @@ export default function App() {
         {activeView === "success" && result && (
           <Success student={result.student} group={result.group} maxMembers={maxMembers} />
         )}
+        {activeView === "admin-groups" && <AdminGroups />}
+        {activeView === "audit-log" && <AuditLogView />}
       </main>
     </div>
   );

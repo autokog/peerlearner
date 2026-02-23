@@ -180,18 +180,43 @@ class TestAssignGroup:
 
             db.session.rollback()
 
-    def test_assigns_to_existing_group(self, app):
+    def test_assigns_to_existing_group_when_overlap(self, app):
+        """A student with a shared unit should join the existing group."""
         with app.app_context():
             Group.query.delete()
             Student.query.delete()
             db.session.flush()
 
-            existing_group = _make_group(name="Existing Group")
-            student = _make_student()
-            result = assign_group(student)
+            shared_unit = _make_unit(code="TST 999", name="Shared Unit")
+            member = _make_student(units=[shared_unit])
+            existing_group = _make_group(name="Existing Group", members=[member])
+
+            newcomer = _make_student(units=[shared_unit])
+            result = assign_group(newcomer)
 
             assert result.id == existing_group.id
-            assert student.group_id == existing_group.id
+            assert newcomer.group_id == existing_group.id
+
+            db.session.rollback()
+
+    def test_creates_new_group_when_no_overlap(self, app):
+        """A student with no shared units should start a fresh group."""
+        with app.app_context():
+            Group.query.delete()
+            Student.query.delete()
+            db.session.flush()
+
+            unit_a = _make_unit(code="AAA 001", name="Unit A")
+            unit_b = _make_unit(code="BBB 001", name="Unit B")
+
+            member = _make_student(units=[unit_a])
+            existing_group = _make_group(name="Existing Group", members=[member])
+
+            newcomer = _make_student(units=[unit_b])
+            result = assign_group(newcomer)
+
+            assert result.id != existing_group.id
+            assert newcomer.group_id == result.id
 
             db.session.rollback()
 
