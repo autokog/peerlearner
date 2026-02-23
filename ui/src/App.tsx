@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/api";
 import { useEffect, useState } from "react";
 import Register from "./Register";
 import Success from "./Success";
@@ -21,14 +22,14 @@ export default function App() {
   const [maxMembers, setMaxMembers] = useState(10);
 
   useEffect(() => {
-    fetch("/api/config")
+    apiFetch("/api/config")
       .then((r) => r.json())
       .then((cfg) => setMaxMembers(cfg.max_members))
       .catch(() => {});
   }, []);
 
   useEffect(() => {
-    fetch("/api/auth/me")
+    apiFetch("/api/auth/me")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.user) {
@@ -46,7 +47,7 @@ export default function App() {
   }
 
   async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST" });
+    await apiFetch("/api/auth/logout", { method: "POST" });
     setUser(null);
     setView("register");
     setResult(null);

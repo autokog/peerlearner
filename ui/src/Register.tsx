@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/api";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,7 +50,7 @@ export default function Register({ onSuccess }: RegisterProps) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch("/api/courses")
+    apiFetch("/api/courses")
       .then((r) => r.json())
       .then(setCourses)
       .catch(() => setError("Could not load courses. Is the server running?"));
@@ -87,7 +88,7 @@ export default function Register({ onSuccess }: RegisterProps) {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/register", {
+      const res = await apiFetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

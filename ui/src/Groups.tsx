@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/api";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -15,7 +16,7 @@ export default function Groups() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("/api/groups")
+    apiFetch("/api/groups")
       .then((r) => r.json())
       .then(setGroups)
       .catch(() => setError("Failed to load groups."))

@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/api";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -52,7 +53,7 @@ export function AdminGroups() {
   const [moving, setMoving] = useState<{ student: any } | null>(null);
 
   async function loadGroups() {
-    const res = await fetch("/api/admin/groups");
+    const res = await apiFetch("/api/admin/groups");
     if (res.ok) {
       const data = await res.json();
       setGroups(data);

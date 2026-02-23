@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/api";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -20,7 +21,7 @@ export default function MyGroup({ user }: MyGroupProps) {
 
   useEffect(() => {
     if (!student?.group_id) return;
-    fetch("/api/groups")
+    apiFetch("/api/groups")
       .then((r) => r.json())
       .then((groups) => {
         const group = groups.find((g: any) => g.id === student.group_id);

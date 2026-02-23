@@ -16,7 +16,13 @@ def create_app(test_config=None):
 
     db.init_app(app)
     migrate.init_app(app, db)
-    CORS(app)
+
+    allowed_origins = [
+        o.strip()
+        for o in app.config.get("ALLOWED_ORIGINS", "").split(",")
+        if o.strip()
+    ] or "*"
+    CORS(app, origins=allowed_origins, supports_credentials=True)
 
     from .routes import api
     from .auth import auth

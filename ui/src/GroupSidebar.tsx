@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/api";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,8 +10,8 @@ export default function GroupSidebar() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/groups").then((r) => r.json()),
-      fetch("/api/config").then((r) => r.json()),
+      apiFetch("/api/groups").then((r) => r.json()),
+      apiFetch("/api/config").then((r) => r.json()),
     ])
       .then(([g, cfg]) => {
         setGroups(g);
