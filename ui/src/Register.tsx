@@ -63,7 +63,7 @@ export default function Register({ onSuccess }: RegisterProps) {
       return;
     }
     setUnitsLoading(true);
-    fetch(`/api/units?course_id=${form.course_id}`)
+    apiFetch(`/api/units?course_id=${form.course_id}`)
       .then((r) => r.json())
       .then((u) => { setUnits(u); setSelectedUnits([]); })
       .catch(() => setError("Could not load units."))
