@@ -1,8 +1,50 @@
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import MoveStudentDialog from "./MoveStudentDialog";
+
+function WhatsAppLinkEditor({ group, onSaved }: { group: any; onSaved: () => void }) {
+  const [link, setLink] = useState(group.whatsapp_link ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSave() {
+    setSaving(true);
+    setError("");
+    const res = await fetch(`/api/admin/groups/${group.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ whatsapp_link: link }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error ?? "Save failed.");
+    } else {
+      onSaved();
+    }
+    setSaving(false);
+  }
+
+  return (
+    <div className="mt-3 pt-3 border-t">
+      <p className="text-xs text-muted-foreground mb-1.5">WhatsApp Group Link</p>
+      <div className="flex gap-2">
+        <Input
+          value={link}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLink(e.target.value)}
+          placeholder="https://chat.whatsapp.com/..."
+          className="text-xs h-8"
+        />
+        <Button size="sm" onClick={handleSave} disabled={saving} className="h-8 shrink-0">
+          {saving ? "Saving…" : "Save"}
+        </Button>
+      </div>
+      {error && <p className="text-xs text-destructive mt-1">{error}</p>}
+    </div>
+  );
+}
 
 export function AdminGroups() {
   const [groups, setGroups] = useState<any[]>([]);
@@ -47,11 +89,18 @@ export function AdminGroups() {
               <ul className="divide-y">
                 {g.members.map((s: any) => (
                   <li key={s.id} className="flex items-center justify-between py-1.5">
-                    <div>
-                      <p className="text-sm font-medium">{s.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {s.student_id} · {s.gender} · {s.course ?? "—"}
-                      </p>
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <img
+                        src={s.gravatar_url}
+                        alt={s.name}
+                        className="w-7 h-7 rounded-full border border-border shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium">{s.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {s.student_id} · {s.gender} · {s.course ?? "—"}
+                        </p>
+                      </div>
                     </div>
                     <Button
                       variant="outline"
@@ -64,6 +113,7 @@ export function AdminGroups() {
                 ))}
               </ul>
             )}
+            <WhatsAppLinkEditor group={g} onSaved={loadGroups} />
           </CardContent>
         </Card>
       ))}

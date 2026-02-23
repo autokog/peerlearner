@@ -142,6 +142,7 @@ class Group(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), nullable=False, unique=True)
+    whatsapp_link = db.Column(db.String(500), nullable=True)
     students = db.relationship("Student", backref="group", lazy=True)
 
     def member_count(self):
@@ -151,6 +152,7 @@ class Group(db.Model):
         return {
             "id": self.id,
             "name": self.name,
+            "whatsapp_link": self.whatsapp_link,
             "members": [s.to_dict() for s in self.students],
         }
 
@@ -169,6 +171,7 @@ class Student(db.Model):
     units = db.relationship("Unit", secondary=student_units, lazy=True)
 
     def to_dict(self):
+        email_hash = hashlib.md5(self.email.lower().strip().encode()).hexdigest()
         return {
             "id": self.id,
             "name": self.name,
@@ -181,6 +184,7 @@ class Student(db.Model):
             "course": self.course.name if self.course else None,
             "units": [u.to_dict() for u in self.units],
             "has_account": self.user is not None,
+            "gravatar_url": f"https://www.gravatar.com/avatar/{email_hash}?s=40&d=identicon",
         }
 
 

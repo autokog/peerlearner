@@ -7,9 +7,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 interface LoginProps {
   onLogin: (user: any) => void;
   onGoToRegister: () => void;
+  onLookup: () => void;
 }
 
-export default function Login({ onLogin, onGoToRegister }: LoginProps) {
+export default function Login({ onLogin, onGoToRegister, onLookup }: LoginProps) {
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -138,6 +139,17 @@ export default function Login({ onLogin, onGoToRegister }: LoginProps) {
             >
               Create one
             </button>
+          </p>
+
+          <p className="text-center text-sm text-gray-500 mt-3">
+            <button
+              type="button"
+              onClick={onLookup}
+              className="text-primary font-medium hover:underline"
+            >
+              Find My Group
+            </button>
+            {" "}— look up your group without logging in
           </p>
         </div>
       </div>

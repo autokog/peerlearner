@@ -33,6 +33,32 @@ def get_audit_log():
     })
 
 
+@admin.route("/groups/<int:group_id>", methods=["PATCH"])
+@admin_required
+def update_group(group_id):
+    group = Group.query.get(group_id)
+    if not group:
+        return jsonify({"error": "Group not found."}), 404
+
+    data = request.get_json(force=True)
+    link = data.get("whatsapp_link", "").strip()
+
+    if link and not link.startswith("https://chat.whatsapp.com/"):
+        return jsonify({"error": "Link must start with https://chat.whatsapp.com/"}), 400
+
+    group.whatsapp_link = link or None
+    db.session.commit()
+
+    _audit(
+        "admin.set_whatsapp_link",
+        "group",
+        group.id,
+        {"group_name": group.name, "whatsapp_link": group.whatsapp_link},
+    )
+
+    return jsonify(group.to_dict())
+
+
 @admin.route("/students/<int:student_id>/move", methods=["POST"])
 @admin_required
 def move_student(student_id):

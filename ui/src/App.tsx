@@ -5,11 +5,12 @@ import MyGroup from "./MyGroup";
 import GroupSidebar from "./GroupSidebar";
 import Login from "./Login";
 import AuthRegister from "./AuthRegister";
+import GroupLookup from "./GroupLookup";
 import { AdminGroups, AuditLogView } from "./AdminPanel";
 import { Button } from "@/components/ui/button"
 
 type View = "register" | "success" | "my-group" | "admin-groups" | "audit-log";
-type AuthView = "login" | "signup";
+type AuthView = "login" | "signup" | "lookup";
 
 export default function App() {
   const [user, setUser] = useState<any | null>(null);
@@ -66,8 +67,17 @@ export default function App() {
   }
 
   if (!user) {
+    if (authView === "lookup") {
+      return (
+        <GroupLookup onGoToRegister={() => setAuthView("login")} />
+      );
+    }
     return authView === "login" ? (
-      <Login onLogin={handleLogin} onGoToRegister={() => setAuthView("signup")} />
+      <Login
+        onLogin={handleLogin}
+        onGoToRegister={() => setAuthView("signup")}
+        onLookup={() => setAuthView("lookup")}
+      />
     ) : (
       <AuthRegister onLogin={handleLogin} onGoToLogin={() => setAuthView("login")} />
     );

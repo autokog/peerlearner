@@ -98,6 +98,31 @@ def register():
     }), 201
 
 
+@api.route("/public/student/<path:student_id>", methods=["GET"])
+def public_get_student(student_id):
+    student = Student.query.filter_by(student_id=student_id).first()
+    if not student:
+        return jsonify({"error": "Student not found."}), 404
+
+    group = Group.query.get(student.group_id) if student.group_id else None
+    members = []
+    if group:
+        members = [
+            {"name": m.name, "course": m.course.name if m.course else None, "gender": m.gender}
+            for m in group.students
+        ]
+
+    return jsonify({
+        "student": student.to_dict(),
+        "group": {
+            "id": group.id,
+            "name": group.name,
+            "whatsapp_link": group.whatsapp_link,
+            "members": members,
+        } if group else None,
+    })
+
+
 @api.route("/groups", methods=["GET"])
 @login_required
 def get_groups():
