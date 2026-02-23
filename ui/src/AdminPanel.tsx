@@ -139,7 +139,7 @@ export function AuditLogView() {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/admin/audit-log?page=${page}&per_page=50`)
+    apiFetch(`/api/admin/audit-log?page=${page}&per_page=50`)
       .then((r) => r.json())
       .then((data) => {
         setEntries(data.entries ?? []);
