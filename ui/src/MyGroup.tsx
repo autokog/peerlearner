@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface MyGroupProps {
   user: any;
@@ -18,9 +19,11 @@ export default function MyGroup({ user }: MyGroupProps) {
   const [groupMembers, setGroupMembers] = useState<any[]>([]);
   const [groupName, setGroupName] = useState("");
   const [whatsappLink, setWhatsappLink] = useState<string | null>(null);
+  const [loading, setLoading] = useState(Boolean(student?.group_id));
 
   useEffect(() => {
     if (!student?.group_id) return;
+    setLoading(true);
     apiFetch("/api/groups")
       .then((r) => r.json())
       .then((groups) => {
@@ -30,7 +33,8 @@ export default function MyGroup({ user }: MyGroupProps) {
           setGroupName(group.name);
           setWhatsappLink(group.whatsapp_link ?? null);
         }
-      });
+      })
+      .finally(() => setLoading(false));
   }, [student?.group_id]);
 
   const sharedUnits = groupMembers.length > 1
@@ -114,11 +118,13 @@ export default function MyGroup({ user }: MyGroupProps) {
         {student.group_id ? (
           <Card>
             <CardHeader>
-              <CardTitle>{groupName || `Group ${student.group_id}`}</CardTitle>
+              <CardTitle>
+                {loading ? <Skeleton className="h-5 w-32" /> : groupName}
+              </CardTitle>
               <CardDescription>
-                {groupMembers.length} member{groupMembers.length !== 1 ? "s" : ""}
+                {loading ? <Skeleton className="h-4 w-20 mt-1" /> : `${groupMembers.length} member${groupMembers.length !== 1 ? "s" : ""}`}
               </CardDescription>
-              {whatsappLink && (
+              {!loading && whatsappLink && (
                 <a
                   href={whatsappLink}
                   target="_blank"
@@ -134,37 +140,50 @@ export default function MyGroup({ user }: MyGroupProps) {
             </CardHeader>
             <CardContent>
               <ul className="divide-y">
-                {groupMembers.map((m: any) => (
-                  <li
-                    key={m.id}
-                    className="flex items-center justify-between py-2.5 text-sm"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <img
-                        src={m.gravatar_url}
-                        alt={m.name}
-                        className="w-8 h-8 rounded-full border border-border shrink-0"
-                      />
-                      <div className="min-w-0">
-                        <p className="font-medium">
-                          {m.name}
-                          {m.id === student.id && (
-                            <span className="ml-2 text-xs text-muted-foreground">
-                              (you)
-                            </span>
-                          )}
-                        </p>
-                        <p className="text-muted-foreground text-xs truncate">{m.course}</p>
-                      </div>
-                    </div>
-                    <Badge
-                      variant={m.id === student.id ? "default" : "secondary"}
-                      className="capitalize"
-                    >
-                      {m.gender}
-                    </Badge>
-                  </li>
-                ))}
+                {loading
+                  ? Array.from({ length: 4 }).map((_, i) => (
+                      <li key={i} className="flex items-center justify-between py-2.5">
+                        <div className="flex items-center gap-2.5">
+                          <Skeleton className="w-8 h-8 rounded-full shrink-0" />
+                          <div className="space-y-1.5">
+                            <Skeleton className="h-3.5 w-28" />
+                            <Skeleton className="h-3 w-20" />
+                          </div>
+                        </div>
+                        <Skeleton className="h-5 w-12 rounded-full" />
+                      </li>
+                    ))
+                  : groupMembers.map((m: any) => (
+                      <li
+                        key={m.id}
+                        className="flex items-center justify-between py-2.5 text-sm"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <img
+                            src={m.gravatar_url}
+                            alt={m.name}
+                            className="w-8 h-8 rounded-full border border-border shrink-0"
+                          />
+                          <div className="min-w-0">
+                            <p className="font-medium">
+                              {m.name}
+                              {m.id === student.id && (
+                                <span className="ml-2 text-xs text-muted-foreground">
+                                  (you)
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-muted-foreground text-xs truncate">{m.course}</p>
+                          </div>
+                        </div>
+                        <Badge
+                          variant={m.id === student.id ? "default" : "secondary"}
+                          className="capitalize"
+                        >
+                          {m.gender}
+                        </Badge>
+                      </li>
+                    ))}
               </ul>
               {sharedUnits.length > 0 && (
                 <div className="mt-4 pt-4 border-t">
