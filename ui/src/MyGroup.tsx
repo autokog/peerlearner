@@ -1,6 +1,7 @@
 import { apiFetch } from "@/lib/api";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -8,6 +9,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface MyGroupProps {
@@ -20,13 +28,19 @@ export default function MyGroup({ user }: MyGroupProps) {
   const [groupName, setGroupName] = useState("");
   const [whatsappLink, setWhatsappLink] = useState<string | null>(null);
   const [loading, setLoading] = useState(Boolean(student?.group_id));
+  const [allGroups, setAllGroups] = useState<any[]>([]);
+  const [switchOpen, setSwitchOpen] = useState(false);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [switching, setSwitching] = useState(false);
+  const [switchError, setSwitchError] = useState("");
 
-  useEffect(() => {
+  function loadGroups() {
     if (!student?.group_id) return;
     setLoading(true);
     apiFetch("/api/groups")
       .then((r) => r.json())
       .then((groups) => {
+        setAllGroups(groups);
         const group = groups.find((g: any) => g.id === student.group_id);
         if (group) {
           setGroupMembers(group.members);
@@ -35,7 +49,35 @@ export default function MyGroup({ user }: MyGroupProps) {
         }
       })
       .finally(() => setLoading(false));
-  }, [student?.group_id]);
+  }
+
+  useEffect(() => { loadGroups(); }, [student?.group_id]);
+
+  async function handleSwitch() {
+    if (!selectedGroupId) return;
+    setSwitching(true);
+    setSwitchError("");
+    try {
+      const res = await apiFetch("/api/student/switch-group", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ group_id: selectedGroupId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSwitchError(data.error ?? "Failed to switch group.");
+      } else {
+        student.group_id = data.student.group_id;
+        setSwitchOpen(false);
+        setSelectedGroupId(null);
+        loadGroups();
+      }
+    } catch {
+      setSwitchError("Network error. Please try again.");
+    } finally {
+      setSwitching(false);
+    }
+  }
 
   const sharedUnits = groupMembers.length > 1
     ? groupMembers.slice(1).reduce(
@@ -62,6 +104,7 @@ export default function MyGroup({ user }: MyGroupProps) {
   }
 
   return (
+    <>
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
       {/* Left — student info + units */}
       <div className="space-y-4">
@@ -118,12 +161,21 @@ export default function MyGroup({ user }: MyGroupProps) {
         {student.group_id ? (
           <Card>
             <CardHeader>
-              <CardTitle>
-                {loading ? <Skeleton className="h-5 w-32" /> : groupName}
-              </CardTitle>
-              <CardDescription>
-                {loading ? <Skeleton className="h-4 w-20 mt-1" /> : `${groupMembers.length} member${groupMembers.length !== 1 ? "s" : ""}`}
-              </CardDescription>
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <CardTitle>
+                    {loading ? <Skeleton className="h-5 w-32" /> : groupName}
+                  </CardTitle>
+                  <CardDescription className="mt-1">
+                    {loading ? <Skeleton className="h-4 w-20" /> : `${groupMembers.length} member${groupMembers.length !== 1 ? "s" : ""}`}
+                  </CardDescription>
+                </div>
+                {!loading && (
+                  <Button variant="outline" size="sm" className="shrink-0" onClick={() => { setSelectedGroupId(null); setSwitchError(""); setSwitchOpen(true); }}>
+                    Switch Group
+                  </Button>
+                )}
+              </div>
               {!loading && whatsappLink && (
                 <a
                   href={whatsappLink}
@@ -211,5 +263,47 @@ export default function MyGroup({ user }: MyGroupProps) {
         )}
       </div>
     </div>
+
+    <Dialog open={switchOpen} onOpenChange={setSwitchOpen}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Switch Group</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+          {allGroups
+            .filter((g) => g.id !== student.group_id)
+            .map((g) => {
+              const full = g.members.length >= 10;
+              const selected = selectedGroupId === g.id;
+              return (
+                <button
+                  key={g.id}
+                  disabled={full}
+                  onClick={() => setSelectedGroupId(g.id)}
+                  className={`w-full text-left px-4 py-3 rounded-md border text-sm transition-colors
+                    ${full ? "opacity-40 cursor-not-allowed bg-muted" : "hover:bg-muted cursor-pointer"}
+                    ${selected ? "border-primary bg-primary/5" : "border-border"}`}
+                >
+                  <span className="font-medium">{g.name}</span>
+                  <span className="ml-2 text-muted-foreground">
+                    {g.members.length} member{g.members.length !== 1 ? "s" : ""}
+                    {full && " · Full"}
+                  </span>
+                </button>
+              );
+            })}
+        </div>
+        {switchError && (
+          <p className="text-sm text-destructive">{switchError}</p>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setSwitchOpen(false)}>Cancel</Button>
+          <Button disabled={!selectedGroupId || switching} onClick={handleSwitch}>
+            {switching ? "Switching…" : "Confirm Switch"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

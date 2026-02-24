@@ -145,6 +145,44 @@ def get_groups():
     return jsonify([g.to_dict() for g in groups])
 
 
+@api.route("/student/switch-group", methods=["POST"])
+@login_required
+def switch_group():
+    current_user = User.query.get(_session_user_id())
+    if not current_user or not current_user.student:
+        return jsonify({"error": "No student profile linked to this account."}), 403
+
+    data = request.get_json(force=True)
+    group_id = _to_uuid(data.get("group_id"))
+    if not group_id:
+        return jsonify({"error": "group_id is required."}), 400
+
+    group = Group.query.get(group_id)
+    if not group:
+        return jsonify({"error": "Group not found."}), 404
+
+    student = current_user.student
+    if student.group_id == group_id:
+        return jsonify({"error": "You are already in this group."}), 400
+
+    max_members = current_app.config["MAX_MEMBERS"]
+    if len(group.students) >= max_members:
+        return jsonify({"error": f"That group is full ({max_members} members max)."}), 409
+
+    old_group_id = student.group_id
+    student.group_id = group_id
+    db.session.commit()
+
+    _audit("student.switch_group", "student", student.id, {
+        "student_name": student.name,
+        "from_group_id": str(old_group_id) if old_group_id else None,
+        "to_group_id": str(group_id),
+        "to_group_name": group.name,
+    })
+
+    return jsonify({"student": student.to_dict(), "group": group.to_dict()})
+
+
 @api.route("/student/<path:student_id>", methods=["GET"])
 @login_required
 def get_student(student_id):
