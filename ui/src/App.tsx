@@ -1,17 +1,30 @@
 import { apiFetch } from "@/lib/api";
 import { useEffect, useState, Component, type ReactNode } from "react";
 
-class ErrorBoundary extends Component<{ children: ReactNode }, { crashed: boolean }> {
-  state = { crashed: false };
-  static getDerivedStateFromError() { return { crashed: true }; }
+class ErrorBoundary extends Component<
+  { children: ReactNode },
+  { error: Error | null }
+> {
+  state = { error: null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
   render() {
-    if (this.state.crashed) {
+    if (this.state.error) {
+      const msg = (this.state.error as Error).message;
+      const stack = (this.state.error as Error).stack;
       return (
-        <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-muted/40 px-6 text-center">
-          <p className="text-sm font-medium">Something went wrong.</p>
+        <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-muted/40 px-6">
+          <div className="w-full max-w-lg rounded-lg border border-destructive/40 bg-destructive/5 p-6 space-y-3">
+            <p className="font-semibold text-destructive">Something went wrong</p>
+            <p className="text-sm font-mono text-destructive/80 break-all">{msg}</p>
+            {stack && (
+              <pre className="text-xs text-muted-foreground overflow-auto max-h-40 whitespace-pre-wrap">
+                {stack}
+              </pre>
+            )}
+          </div>
           <button
             onClick={() => window.location.reload()}
-            className="mt-2 rounded-md border px-4 py-2 text-sm hover:bg-muted transition-colors"
+            className="rounded-md border px-4 py-2 text-sm hover:bg-muted transition-colors"
           >
             Reload page
           </button>
