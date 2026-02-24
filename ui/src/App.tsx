@@ -93,6 +93,7 @@ function AppLayout({ user, onLogout }: { user: any; onLogout: () => void }) {
 export default function App() {
   const [user, setUser] = useState<any | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [authError, setAuthError] = useState(false);
   const [result, setResult] = useState<{ student: any; group: any } | null>(null);
   const [maxMembers, setMaxMembers] = useState(10);
   const navigate = useNavigate();
@@ -110,6 +111,7 @@ export default function App() {
       .then((data) => {
         if (data?.user) setUser(data.user);
       })
+      .catch(() => setAuthError(true))
       .finally(() => setAuthChecked(true));
   }, []);
 
@@ -135,6 +137,21 @@ export default function App() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted/40">
         <p className="text-sm text-muted-foreground">Loading…</p>
+      </div>
+    );
+  }
+
+  if (authError) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-muted/40 px-6 text-center">
+        <p className="text-sm font-medium">Unable to connect to the server.</p>
+        <p className="text-xs text-muted-foreground">Please check your connection and try again.</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-2 rounded-md border px-4 py-2 text-sm hover:bg-muted transition-colors"
+        >
+          Retry
+        </button>
       </div>
     );
   }
