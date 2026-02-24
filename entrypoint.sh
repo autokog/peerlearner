@@ -10,4 +10,4 @@ if ! flask db upgrade; then
 fi
 
 flask db-create
-exec gunicorn --bind 0.0.0.0:5000 --workers 2 manage:app
+exec gunicorn --bind 0.0.0.0:8080 --workers 2 manage:app
