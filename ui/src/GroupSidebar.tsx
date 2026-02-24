@@ -2,6 +2,7 @@ import { apiFetch } from "@/lib/api";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function GroupSidebar() {
   const [groups, setGroups] = useState<any[]>([]);
@@ -21,7 +22,36 @@ export default function GroupSidebar() {
   }, []);
 
   if (loading) {
-    return <div className="text-sm text-muted-foreground py-4">Loading…</div>;
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-3 gap-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i}>
+              <CardContent className="pt-4 pb-3 text-center space-y-2">
+                <Skeleton className="h-7 w-10 mx-auto" />
+                <Skeleton className="h-3 w-14 mx-auto" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <Card>
+          <CardHeader className="pb-2">
+            <Skeleton className="h-4 w-28" />
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-3.5 w-24" />
+                  <Skeleton className="h-5 w-12 rounded-full" />
+                </div>
+                <Skeleton className="h-1.5 w-full rounded-full" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   const totalStudents = groups.reduce((sum, g) => sum + g.members.length, 0);

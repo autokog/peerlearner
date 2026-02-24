@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import MoveStudentDialog from "./MoveStudentDialog";
 
 function WhatsAppLinkEditor({ group, onSaved }: { group: any; onSaved: () => void }) {
@@ -68,7 +69,38 @@ export function AdminGroups() {
     loadGroups();
   }
 
-  if (loading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Card key={i}>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-5 w-16 rounded-full" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ul className="divide-y">
+                {Array.from({ length: 4 }).map((_, j) => (
+                  <li key={j} className="flex items-center justify-between py-1.5">
+                    <div className="flex items-center gap-2.5">
+                      <Skeleton className="w-7 h-7 rounded-full shrink-0" />
+                      <div className="space-y-1.5">
+                        <Skeleton className="h-3.5 w-28" />
+                        <Skeleton className="h-3 w-36" />
+                      </div>
+                    </div>
+                    <Skeleton className="h-7 w-14 rounded-md" />
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -148,7 +180,32 @@ export function AuditLogView() {
       .finally(() => setLoading(false));
   }, [page]);
 
-  if (loading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (loading) {
+    return (
+      <div className="rounded-md border overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50">
+            <tr>
+              {["Time", "User", "Action", "IP", "Method", "Path", "User Agent", "Referrer", "Detail"].map((h) => (
+                <th key={h} className="px-3 py-2 text-left font-medium text-muted-foreground">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {Array.from({ length: 10 }).map((_, i) => (
+              <tr key={i}>
+                {Array.from({ length: 9 }).map((_, j) => (
+                  <td key={j} className="px-3 py-2.5">
+                    <Skeleton className="h-3.5" style={{ width: `${50 + ((i + j) * 17) % 50}%` }} />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
