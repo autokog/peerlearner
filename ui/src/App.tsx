@@ -1,5 +1,26 @@
 import { apiFetch } from "@/lib/api";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Component, type ReactNode } from "react";
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { crashed: boolean }> {
+  state = { crashed: false };
+  static getDerivedStateFromError() { return { crashed: true }; }
+  render() {
+    if (this.state.crashed) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-muted/40 px-6 text-center">
+          <p className="text-sm font-medium">Something went wrong.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-2 rounded-md border px-4 py-2 text-sm hover:bg-muted transition-colors"
+          >
+            Reload page
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { Routes, Route, Navigate, useNavigate, useLocation, Outlet } from "react-router-dom";
 import Register from "./Register";
 import Success from "./Success";
@@ -159,6 +180,7 @@ export default function App() {
   const defaultRedirect = !user ? "/login" : user.student ? "/my-group" : "/enroll";
 
   return (
+    <ErrorBoundary>
     <Routes>
       {/* Public routes */}
       <Route
@@ -237,5 +259,6 @@ export default function App() {
       {/* Catch-all redirect */}
       <Route path="*" element={<Navigate to={defaultRedirect} replace />} />
     </Routes>
+    </ErrorBoundary>
   );
 }
